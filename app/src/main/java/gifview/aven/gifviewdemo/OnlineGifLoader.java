@@ -1,8 +1,10 @@
 package gifview.aven.gifviewdemo;
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 import android.util.Log;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -61,10 +63,14 @@ public class OnlineGifLoader implements Runnable {
             URL url = new URL(mRequestUrl);
             HttpURLConnection connection = (HttpURLConnection) url
                     .openConnection();
-            // connection.setRequestMethod("GET");
             int size = connection.getContentLength();
             InputStream is = connection.getInputStream();
-            // mBmp = BitmapFactory.decodeStream(in);
+            if (is == null) {
+                return;
+            }
+            String md5 = FileUtils.transStringToMd5(mRequestUrl);
+            String fileName = md5 + ".gif";
+            FileUtils.writeInputStreamToSdcard(fileName, is);
             if (mLinstener != null) {
                 mLinstener.onLoaded(is);
             }
@@ -77,9 +83,27 @@ public class OnlineGifLoader implements Runnable {
         }
     }
 
+    private boolean getSdcardCacheData() {
+        if (TextUtils.isEmpty(mRequestUrl)) {
+            return false;
+        }
+        String md5 = FileUtils.transStringToMd5(mRequestUrl);
+        String fileName = md5 + ".gif";
+        InputStream inputStream = FileUtils.getInputStreamFromSdcard(fileName);
+        if (inputStream == null) {
+            return false;
+        }
+        if (mLinstener != null) {
+            mLinstener.onLoaded(inputStream);
+        }
+        return true;
+    }
+
     @Override
     public void run() {
-        getOnlineGifData();
+        if (!getSdcardCacheData()) {
+            getOnlineGifData();
+        }
     }
 
     /**

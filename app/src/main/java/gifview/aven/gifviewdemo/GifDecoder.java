@@ -180,6 +180,9 @@ public class GifDecoder {
      * Move the animation frame counter forward
      */
     public void advance() {
+        if (frameCount == 0) {
+            return;
+        }
         framePointer = (framePointer + 1) % frameCount;
     }
 
@@ -300,12 +303,6 @@ public class GifDecoder {
                 read(buffer.toByteArray());
             } catch (IOException e) {
                 Log.w(TAG, "Error reading data from stream", e);
-            } finally {
-            	try {
-                    is.close();
-                } catch (Exception e) {
-                    Log.w(TAG, "Error closing stream", e);
-                }
             }
         } else {
             status = STATUS_OPEN_ERROR;

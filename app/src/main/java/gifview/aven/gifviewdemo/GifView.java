@@ -6,13 +6,10 @@ import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.util.LruCache;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import java.io.IOException;
@@ -46,6 +43,7 @@ public class GifView extends ImageView implements Handler.Callback {
 	private Handler mUiHandler = null;
 	private int mWidth;
 	private int mHeight;
+	private OnlineGifLoader mGifLoader;
 
 	public GifView(Context context) {
 		super(context);
@@ -79,17 +77,50 @@ public class GifView extends ImageView implements Handler.Callback {
 	@Override
 	protected void onAttachedToWindow() {
 		super.onAttachedToWindow();
-		mUiHandler = new Handler(this);
+		if (mGifLoader != null) {
+			mGifLoader.setActive(true);
+		}
 	}
 
 	@Override
 	protected void onDetachedFromWindow() {
 		super.onDetachedFromWindow();
+		if (mGifLoader != null) {
+			mGifLoader.setActive(false);
+		}
 		onDestroy();
 	}
 
+	/**
+	 * 开始gif动画
+	 */
+	public void onGifPlay() {
+		mShowType = SHOW_TYPE_ANIMAITON;
+		isDrawThreadDestory = false;
+		new DrawThread().start();
+		onGifResume();
+	}
+
+	/**
+	 * 停止gif动画
+	 */
+	public void onGifStop() {
+		isDrawThreadDestory = true;
+	}
+
+	/**
+	 * 恢复gif动画
+	 */
+	public void onGifResume() {
+		mIsPause = false;
+	}
+
+	public void onGifPause() {
+		mIsPause = true;
+	}
+
 	public void onDestroy() {
-		onAnimationStop();
+		onGifStop();
 		if (mCurrentBitmp != null) {
 			mCurrentBitmp.recycle();
 			mCurrentBitmp = null;
@@ -136,30 +167,6 @@ public class GifView extends ImageView implements Handler.Callback {
 	}
 
 	/**
-	 * 开始gif动画
-	 */
-	public void onAnimationShow() {
-		mShowType = SHOW_TYPE_ANIMAITON;
-		isDrawThreadDestory = false;
-		new DrawThread().start();
-		onAnimationResume();
-	}
-
-	/**
-	 * 停止gif动画
-	 */
-	public void onAnimationStop() {
-		isDrawThreadDestory = true;
-	}
-
-	/**
-	 * 恢复gif动画
-	 */
-	public void onAnimationResume() {
-		mIsPause = false;
-	}
-
-	/**
 	 * 以字节数据形式设置gif图片
 	 * @param gif 图片
 	 */
@@ -188,11 +195,11 @@ public class GifView extends ImageView implements Handler.Callback {
 	}
 
 	public void setImageFromNetwork(String address) {
-		OnlineGifLoader gifLoader = new OnlineGifLoader(getContext(), address, new OnlineGifLoader.GifLoaderLinstener() {
+		mGifLoader = new OnlineGifLoader(getContext(), address, new OnlineGifLoader.GifLoaderLinstener() {
 			@Override
 			public void onLoaded(InputStream is) {
 				setGifDecoderImage(is);
-				onAnimationShow();
+				onGifPlay();
 			}
 
 			@Override
@@ -200,7 +207,7 @@ public class GifView extends ImageView implements Handler.Callback {
 
 			}
 		});
-		GifThreadPoolExecutor.getInstance().execute(gifLoader);
+		GifThreadPoolExecutor.getInstance().execute(mGifLoader);
 	}
 
 	public void setImageBitmap(Bitmap bm) {
